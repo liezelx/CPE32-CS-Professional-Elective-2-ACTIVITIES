@@ -1,0 +1,160 @@
+import pygame 
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Set up screen dimensions
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+CELL_SIZE = 35
+ROWS = SCREEN_HEIGHT // CELL_SIZE
+COLS = SCREEN_WIDTH // CELL_SIZE
+
+# Define colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 0)
+RED = (255, 0, 0)
+
+# Create maze grid
+maze = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+
+# Firework particle class
+class Firework:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.dx = random.uniform(-1, 1)
+        self.dy = random.uniform(-2, -1)
+        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
+    def move(self):
+        self.x += self.dx
+        self.y += self.dy
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 2)
+
+# Recursive backtracking algorithm to generate maze 
+def generate_maze(x, y):
+    maze[y][x] = 1
+    directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+    random.shuffle(directions)
+    for dx, dy in directions:
+        nx, ny = x + dx * 2, y + dy * 2
+        if 0 <= nx < COLS and 0 <= ny < ROWS and maze[ny][nx] == 0:
+            maze[y + dy][x + dx] = 1
+            generate_maze(nx, ny)
+
+# Draw maze on screen
+def draw_maze(screen):
+    # Clear the screen
+    screen.fill(BLACK)
+
+    # Draw maze cells
+    for y in range(ROWS):
+        for x in range(COLS):
+            if maze[y][x] == 1:
+                pygame.draw.rect(screen, WHITE, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+    # Draw border around maze
+    pygame.draw.rect(screen, BLUE, (0, 0, SCREEN_WIDTH, SCREEN_HEIGHT), CELL_SIZE)
+
+    # Draw exit door
+    pygame.draw.rect(screen, RED, ((COLS - 1) * CELL_SIZE, (ROWS - 2) * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+# Player class
+class Player:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def move(self, dx, dy):
+        new_x = self.x + dx
+        new_y = self.y + dy
+        if 0 <= new_x < COLS and 0 <= new_y < ROWS and maze[new_y][new_x] == 1:
+            self.x = new_x
+            self.y = new_y
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, GREEN, (self.x * CELL_SIZE, self.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+# Main function to run the game 
+def main():
+    # Set up screen
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Maze Game")
+
+    # Generate maze
+    generate_maze(1, 1)
+
+    # Create player
+    player = Player(1, 1)
+
+    # List to store firework particles
+    fireworks = []
+
+    # Flag to indicate if fireworks have been triggered
+    fireworks_triggered = False
+
+    # Flag to indicate if maze is completed
+    maze_completed = False
+
+    # Game loop 
+    running = True
+    while running:
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    player.move(0, -1)
+                elif event.key == pygame.K_DOWN:
+                    player.move(0, 1)
+                elif event.key == pygame.K_LEFT:
+                    player.move(-1, 0)
+                elif event.key == pygame.K_RIGHT:
+                    player.move(1, 0)
+
+        # Draw maze
+        draw_maze(screen)
+
+        # Draw player
+        player.draw(screen)
+
+
+        # Check if player reached the exit door 
+        if player.x == COLS - 1 and player.y == ROWS - 2:
+            # Trigger fireworks effect if not already triggered
+            if not fireworks_triggered:
+                for _ in range(50):
+                    fireworks.append(Firework((COLS - 1) * CELL_SIZE + CELL_SIZE // 2, (ROWS - 2) * CELL_SIZE + CELL_SIZE // 2))
+                fireworks_triggered = True
+                maze_completed = True
+        else:
+            # Hide fireworks and reset flags if player moves away from exit door
+            fireworks = []
+            fireworks_triggered = False
+            maze_completed = False
+
+        # Render "Congratulations! You finished the maze!" text if maze is completed
+        if maze_completed:
+            font = pygame.font.Font(None, 36)
+            text = font.render("Congratulations! You finished the maze!", True, RED)
+            screen.blit(text, (150, 250))
+
+        # Update and draw fireworks
+        for firework in fireworks:
+            firework.move()
+            firework.draw(screen)
+
+        # Update display
+        pygame.display.flip()
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
